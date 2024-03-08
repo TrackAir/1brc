@@ -15,6 +15,9 @@
  */
 package dev.morling.onebrc;
 
+import org.rschwietzke.CheaperCharBuffer;
+import org.rschwietzke.FastRandom;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -22,9 +25,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-
-import org.rschwietzke.CheaperCharBuffer;
-import org.rschwietzke.FastRandom;
 
 /**
  * Faster version with some data faking instead of a real Gaussian distribution

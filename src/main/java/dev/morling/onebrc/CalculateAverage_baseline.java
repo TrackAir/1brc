@@ -15,8 +15,6 @@
  */
 package dev.morling.onebrc;
 
-import static java.util.stream.Collectors.*;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -24,9 +22,11 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collector;
 
+import static java.util.stream.Collectors.groupingBy;
+
 public class CalculateAverage_baseline {
 
-    private static final String FILE = "./measurements.txt";
+    private static final String FILE = "./measurements-track.txt";
 
     private static record Measurement(String station, double value) {
         private Measurement(String[] parts) {
@@ -53,15 +53,12 @@ public class CalculateAverage_baseline {
     }
 
     public static void main(String[] args) throws IOException {
-        // Map<String, Double> measurements1 = Files.lines(Paths.get(FILE))
-        // .map(l -> l.split(";"))
-        // .collect(groupingBy(m -> m[0], averagingDouble(m -> Double.parseDouble(m[1]))));
-        //
-        // measurements1 = new TreeMap<>(measurements1.entrySet()
-        // .stream()
-        // .collect(toMap(e -> e.getKey(), e -> Math.round(e.getValue() * 10.0) / 10.0)));
-        // System.out.println(measurements1);
+        var clockStart = System.currentTimeMillis();
+        calculateTrack();
+        System.err.format("Took %,d ms\n", System.currentTimeMillis() - clockStart);
+    }
 
+    public static void calculateTrack() throws IOException {
         Collector<Measurement, MeasurementAggregator, ResultRow> collector = Collector.of(
                 MeasurementAggregator::new,
                 (a, m) -> {
