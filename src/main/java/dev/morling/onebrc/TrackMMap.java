@@ -26,7 +26,7 @@ import java.util.Map;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
-public class TrackTest {
+public class TrackMMap {
     private static final String FILE = "./measurements.txt";
     private static long fileSize ;
     private static final Map<String, StationStats> statsMap = new HashMap<>();
@@ -55,10 +55,6 @@ public class TrackTest {
                 stationStats.count += 1;
                 cursor = endPos + 1;
             }
-
-//            statsMap.values().forEach(stationStats -> {
-//                System.out.println(stationStats.name+"="+stationStats);
-//            });
 
 
         } catch (Exception e) {

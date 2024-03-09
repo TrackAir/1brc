@@ -26,7 +26,7 @@ import static java.util.stream.Collectors.groupingBy;
 
 public class CalculateAverage_baseline {
 
-    private static final String FILE = "./measurements-track.txt";
+    private static final String FILE = "./measurements.txt";
 
     private static record Measurement(String station, double value) {
         private Measurement(String[] parts) {
