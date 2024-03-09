@@ -27,10 +27,12 @@ import java.util.stream.Collectors;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
-public class TrackMMap {
+public class TrackThread {
     private static final String FILE = "./measurements.txt";
-    private static long fileSize ;
-    private static final Map<String, StationStats> statsMap = new HashMap<>();
+    private static final Map<String, StationStats> map = new HashMap<>();
+
+
+
     public static void main(String[] args) throws IOException {
         var clockStart = System.currentTimeMillis();
         calculateTrack();
@@ -38,16 +40,81 @@ public class TrackMMap {
     }
 
     public static void calculateTrack() throws IOException {
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
         try (RandomAccessFile raf = new RandomAccessFile(FILE, "r");
              ) {
             long length = raf.length();
             MemorySegment chunk = raf.getChannel().map(FileChannel.MapMode.READ_ONLY, 0, length, Arena.global());
+            Thread[] threads = new Thread[availableProcessors];
+            Compute[] computes = new Compute[availableProcessors];
+            long cursor = 0L;
+            long size = length / availableProcessors;
+            for (int i = 0 ; i < availableProcessors ; i++){
+                long curCursor = cursor;
+                long curSize = size;
+                MemorySegment slice;
+                if ( i != availableProcessors-1){
+                    while(chunk.get(JAVA_BYTE, curSize+curCursor) != '\n'){
+                        curSize++;
+                    }
+                    slice = chunk.asSlice(curCursor, curSize+1);
+                    cursor = curSize  + 1 +  cursor;
+                }else {
+                    slice = chunk.asSlice(curCursor, chunk.byteSize() - curCursor);
+                }
+                Compute compute = new Compute(slice);
+                Thread thread = new Thread(compute);
+                threads[i] = thread;
+                computes[i] = compute;
+            }
+
+            for (int i = 0 ; i < availableProcessors ; i++){
+                threads[i].start();
+            }
+            for (int i = 0 ; i < availableProcessors ; i++){
+                threads[i].join();
+            }
+
+            for (int i = 0 ; i < availableProcessors ; i++){
+                Map<String, StationStats> statsMap = computes[i].statsMap;
+                for (Map.Entry<String, StationStats> entry : statsMap.entrySet()){
+                    String key = entry.getKey();
+                    StationStats value = entry.getValue();
+                    StationStats stationStats = map.computeIfAbsent(key, k -> new StationStats(key));
+                    stationStats.min = Math.min(stationStats.min, value.min);
+                    stationStats.max = Math.max(stationStats.max, value.max);
+                    stationStats.count = stationStats.count+value.count;
+                    stationStats.sum = stationStats.sum+value.sum;
+                }
+            }
+
+            System.out.print("{");
+            System.out.print(
+                    map.entrySet().stream().sorted(Map.Entry.comparingByKey()).map(Object::toString).collect(Collectors.joining(", ")));
+            System.out.println("}");
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static class Compute implements Runnable{
+        MemorySegment chunk;
+
+        long cursor;
+        Map<String, StationStats> statsMap = new HashMap<>();
+
+        public Compute(MemorySegment chunk){
+            this.chunk = chunk;
+        }
+
+        @Override
+        public void run() {
             for (long cursor = 0 ; cursor < chunk.byteSize() ; ){
                 long semicolonPos = findByte(cursor, ';', chunk);
                 long endPos = findByte(semicolonPos+1, '\n', chunk);
                 String name = stringAt(cursor, semicolonPos, chunk);
-//                String num = stringAt(semicolonPos+1, endPos, chunk);
-//                int numDoub = Integer.parseInt(num)
                 int numDoub = parseTemperature(semicolonPos,chunk);
                 StationStats stationStats = statsMap.computeIfAbsent(name, key -> new StationStats(name));
                 stationStats.min = Math.min(stationStats.min, numDoub);
@@ -56,13 +123,6 @@ public class TrackMMap {
                 stationStats.count += 1;
                 cursor = endPos + 1;
             }
-            System.out.print("{");
-            System.out.print(
-                    statsMap.entrySet().stream().sorted(Map.Entry.comparingByKey()).map(Object::toString).collect(Collectors.joining(", ")));
-            System.out.println("}");
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
