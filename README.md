@@ -4,6 +4,7 @@
 baseline | 247906ms
 TrackMMap.java | 51103ms
 TrackThread.java | 6828ms
+GraalVM | 3122ms
 
 # 基线火焰图
 ![avatar](./flamegraph.png)
